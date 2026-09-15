@@ -1,0 +1,6 @@
+jdk:
+  - openjdk8
+
+before_install:
+  - yes | sdkmanager "ndk;21.4.7075529"
+  - export NDK_HOME="$ANDROID_HOME/ndk/21.4.7075529"
