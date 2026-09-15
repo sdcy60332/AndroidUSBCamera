@@ -125,12 +125,9 @@ class EGLEvn {
         if (mEglContext == EGL14.EGL_NO_CONTEXT) {
             return
         }
-        if (mSurface == null) {
-            return
-        }
-        // 更新EGL显示时间戳
-        if (! EGLExt.eglPresentationTimeANDROID(mEglDisplay, mEglSurface, nanoseconds)) {
-            loggerError("Set Presentation time")
+        if (mSurface?.isValid == true) {
+            // 更新EGL显示时间戳
+            EGLExt.eglPresentationTimeANDROID(mEglDisplay, mEglSurface, nanoseconds)
         }
     }
 
@@ -140,8 +137,9 @@ class EGLEvn {
         }
         // 交换双重缓冲数据
         // 即将渲染数据(后端缓冲区)输出到目标窗口(Surface)(前端缓冲区)
-        if (! EGL14.eglSwapBuffers(mEglDisplay, mEglSurface)) {
-            loggerError("Swap buffers")
+        // mSurface == null 时为 Pbuffer 离屏渲染
+        if (mSurface == null || mSurface?.isValid == true) {
+            EGL14.eglSwapBuffers(mEglDisplay, mEglSurface)
         }
     }
 

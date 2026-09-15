@@ -153,8 +153,6 @@ class AspectRatioGLSurfaceView : GLSurfaceView, GLSurfaceView.Renderer,
         GLES20.glUniformMatrix4fv(mStMatrixHandle, 1, false, mStMatrix, 0)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0)
-
-        Logger.i(TAG, "--------draw a frame---------")
     }
 
     private fun getMVPMatrix(): FloatArray {
