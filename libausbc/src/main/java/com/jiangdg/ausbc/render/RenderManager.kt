@@ -38,6 +38,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -62,6 +63,7 @@ class RenderManager(
     private var mEOSTextureId: Int? = null
     private var mRenderThread: HandlerThread? = null
     private var mRenderHandler: Handler? = null
+    private var mReleaseLatch: CountDownLatch? = null
     private var mRenderCodecThread: HandlerThread? = null
     private var mRenderCodecHandler: Handler? = null
     private var mCameraRender: CameraRender? = null
@@ -116,7 +118,11 @@ class RenderManager(
                     val h = second as Int
                     val surface = third as? Surface
                     mScreenRender?.initEGLEvn()
-                    mScreenRender?.setupSurface(surface, w, h)
+                    if (mScreenRender?.setupSurface(surface, w, h) != true) {
+                        Logger.e(TAG, "create window surface failed, abort render init")
+                        EventBus.with<Boolean>(BusKey.KEY_RENDER_READY).postMessage(false)
+                        return true
+                    }
                     mScreenRender?.initGLES()
                     mCameraRender?.initGLES()
                     mCaptureRender?.initGLES()
@@ -170,11 +176,15 @@ class RenderManager(
                     }
                     effectId
                 }?.also { id ->
-                    mScreenRender?.drawFrame(id)
+                    if (mScreenRender?.isWindowSurfaceAlive() != false) {
+                        mScreenRender?.drawFrame(id)
+                    }
                     drawFrame2Capture(id)
                     drawFrame2Codec(id, mCameraSurfaceTexture?.timestamp ?: 0)
                 }
-                mScreenRender?.swapBuffers(mCameraSurfaceTexture?.timestamp ?: 0)
+                if (mScreenRender?.isWindowSurfaceAlive() != false) {
+                    mScreenRender?.swapBuffers(mCameraSurfaceTexture?.timestamp ?: 0)
+                }
             }
             MSG_GL_ADD_EFFECT -> {
                 (msg.obj as? AbstractEffect)?.let { effect->
@@ -210,6 +220,7 @@ class RenderManager(
                 mCaptureRender?.releaseGLES()
                 mCameraSurfaceTexture?.setOnFrameAvailableListener(null)
                 mCameraSurfaceTexture = null
+                mReleaseLatch?.countDown()
             }
         }
         return true
@@ -274,10 +285,25 @@ class RenderManager(
      * Stop render screen
      */
     fun stopRenderScreen() {
-        mRenderHandler?.obtainMessage(MSG_GL_RELEASE)?.sendToTarget()
-        mRenderThread?.quitSafely()
+        val handler = mRenderHandler
+        val thread = mRenderThread
         mRenderThread = null
         mRenderHandler = null
+        if (handler == null || thread == null) {
+            return
+        }
+        val latch = CountDownLatch(1)
+        mReleaseLatch = latch
+        handler.obtainMessage(MSG_GL_RELEASE)?.sendToTarget()
+        thread.quitSafely()
+        if (Thread.currentThread() !== thread) {
+            try {
+                latch.await(1, TimeUnit.SECONDS)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        mReleaseLatch = null
     }
 
     /**

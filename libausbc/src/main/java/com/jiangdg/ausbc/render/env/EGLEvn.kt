@@ -31,6 +31,8 @@ class EGLEvn {
     private var mEglContext: EGLContext = EGL14.EGL_NO_CONTEXT
     private var mSurface: Surface? = null
     private val configs = arrayOfNulls<EGLConfig>(1)
+    private var mSurfaceLost = false
+    private var mSurfaceLostLogged = false
 
     fun initEgl(curContext: EGLContext? = null): Boolean {
         // 1. 获取EGL Display
@@ -83,30 +85,57 @@ class EGLEvn {
         return true
     }
 
-    fun setupSurface(surface: Surface?, surfaceWidth: Int = 0, surfaceHeight: Int = 0) {
+    fun setupSurface(surface: Surface?, surfaceWidth: Int = 0, surfaceHeight: Int = 0): Boolean {
         if (mEglDisplay == EGL14.EGL_NO_DISPLAY) {
-            return
+            return false
         }
         // If surface is null
         // Force off screen mode
-        mEglSurface = if (surface == null) {
-            val attributes  = intArrayOf(
-                EGL14.EGL_WIDTH, surfaceWidth,
-                EGL14.EGL_HEIGHT, surfaceHeight,
-                EGL14.EGL_NONE
-            )
-            EGL14.eglCreatePbufferSurface(mEglDisplay, configs[0], attributes , 0)
-        } else {
-            val attributes  = intArrayOf(
-                EGL14.EGL_NONE
-            )
-            EGL14.eglCreateWindowSurface(mEglDisplay, configs[0], surface, attributes , 0)
+        val maxTry = if (surface == null) 1 else 20
+        for (attempt in 1..maxTry) {
+            mEglSurface = if (surface == null) {
+                val attributes  = intArrayOf(
+                    EGL14.EGL_WIDTH, surfaceWidth,
+                    EGL14.EGL_HEIGHT, surfaceHeight,
+                    EGL14.EGL_NONE
+                )
+                EGL14.eglCreatePbufferSurface(mEglDisplay, configs[0], attributes , 0)
+            } else {
+                val attributes  = intArrayOf(
+                    EGL14.EGL_NONE
+                )
+                EGL14.eglCreateWindowSurface(mEglDisplay, configs[0], surface, attributes , 0)
+            }
+            if (mEglSurface != EGL14.EGL_NO_SURFACE) {
+                mSurface = surface
+                mSurfaceLost = false
+                mSurfaceLostLogged = false
+                Logger.i(TAG, "setupSurface Success!")
+                return true
+            }
+            if (surface == null || attempt == maxTry) {
+                mSurface = surface
+                mSurfaceLost = true
+                if (!mSurfaceLostLogged) {
+                    mSurfaceLostLogged = true
+                    loggerError("Create window")
+                }
+                return false
+            }
+            try {
+                Thread.sleep(50)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                mSurface = surface
+                mSurfaceLost = true
+                if (!mSurfaceLostLogged) {
+                    mSurfaceLostLogged = true
+                    loggerError("Create window")
+                }
+                return false
+            }
         }
-        if (mEglSurface == EGL14.EGL_NO_SURFACE) {
-            loggerError("Create window")
-        }
-        mSurface = surface
-        Logger.i(TAG, "setupSurface Success!")
+        return false
     }
 
     fun eglMakeCurrent() {
@@ -121,26 +150,42 @@ class EGLEvn {
         }
     }
 
-    fun setPresentationTime(nanoseconds: Long) {
+    fun setPresentationTime(nanoseconds: Long): Boolean {
         if (mEglContext == EGL14.EGL_NO_CONTEXT) {
-            return
+            return false
         }
-        if (mSurface?.isValid == true) {
-            // 更新EGL显示时间戳
-            EGLExt.eglPresentationTimeANDROID(mEglDisplay, mEglSurface, nanoseconds)
+        if (mSurface == null || !isSurfaceAlive()) {
+            return false
         }
+        // 更新EGL显示时间戳
+        if (! EGLExt.eglPresentationTimeANDROID(mEglDisplay, mEglSurface, nanoseconds)) {
+            onCallFailed("Set Presentation time")
+            return false
+        }
+        return true
     }
 
-    fun swapBuffers() {
+    fun swapBuffers(): Boolean {
         if (mEglContext == EGL14.EGL_NO_CONTEXT) {
-            return
+            return false
+        }
+        if (!isSurfaceAlive()) {
+            return false
         }
         // 交换双重缓冲数据
         // 即将渲染数据(后端缓冲区)输出到目标窗口(Surface)(前端缓冲区)
-        // mSurface == null 时为 Pbuffer 离屏渲染
-        if (mSurface == null || mSurface?.isValid == true) {
-            EGL14.eglSwapBuffers(mEglDisplay, mEglSurface)
+        if (!EGL14.eglSwapBuffers(mEglDisplay, mEglSurface)) {
+            onCallFailed("Swap buffers")
+            return false
         }
+        return true
+    }
+
+    fun isSurfaceAlive(): Boolean {
+        return !mSurfaceLost
+                && mEglDisplay != EGL14.EGL_NO_DISPLAY
+                && mEglSurface != EGL14.EGL_NO_SURFACE
+                && mEglContext != EGL14.EGL_NO_CONTEXT
     }
 
     fun releaseElg() {
@@ -163,10 +208,22 @@ class EGLEvn {
         Logger.e(TAG, "$msg failed. error = ${EGL14.eglGetError()}")
     }
 
+    private fun onCallFailed(msg: String) {
+        val error = EGL14.eglGetError()
+        if (!mSurfaceLost && (error == EGL14.EGL_BAD_SURFACE || error == EGL_BAD_NATIVE_WINDOW)) {
+            mSurfaceLost = true
+        }
+        if (!mSurfaceLostLogged) {
+            mSurfaceLostLogged = true
+            Logger.e(TAG, "$msg failed. error = $error")
+        }
+    }
+
     fun getEGLContext(): EGLContext = EGL14.eglGetCurrentContext()
 
     companion object {
         private const val TAG = "EGLEvn"
         private const val EGL_RECORDABLE_ANDROID = 0x3142
+        private const val EGL_BAD_NATIVE_WINDOW = 0x3056
     }
 }

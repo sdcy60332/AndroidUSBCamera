@@ -32,12 +32,20 @@ class ScreenRender(context: Context) : AbstractRender(context) {
         mEgl?.initEgl()
     }
 
-    fun setupSurface(surface: Surface?, surfaceWidth: Int = 0, surfaceHeight: Int = 0) {
-        mEgl?.setupSurface(surface, surfaceWidth, surfaceHeight)
-        mEgl?.eglMakeCurrent()
+    fun setupSurface(surface: Surface?, surfaceWidth: Int = 0, surfaceHeight: Int = 0): Boolean {
+        val success = mEgl?.setupSurface(surface, surfaceWidth, surfaceHeight) ?: false
+        if (success) {
+            mEgl?.eglMakeCurrent()
+        }
+        return success
     }
 
+    fun isWindowSurfaceAlive(): Boolean = mEgl?.isSurfaceAlive() ?: false
+
     fun swapBuffers(timeStamp: Long) {
+        if (!isWindowSurfaceAlive()) {
+            return
+        }
         mEgl?.setPresentationTime(timeStamp)
         mEgl?.swapBuffers()
     }

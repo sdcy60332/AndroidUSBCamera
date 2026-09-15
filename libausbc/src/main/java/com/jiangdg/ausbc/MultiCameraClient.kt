@@ -317,13 +317,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                         // use opengl render
                         // if surface is null, force off screen render whatever mode
                         // and use init preview size（measure size） for render size
-                        val measureSize = try {
-                            mSizeChangedFuture = SettableFuture()
-                            mSizeChangedFuture?.get(2000, TimeUnit.MILLISECONDS)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            null
-                        }
+                        val measureSize: Pair<Int, Int>? = null
                         Logger.i(TAG, "surface measure size $measureSize")
                         mCameraRequest!!.renderMode = CameraRequest.RenderMode.OPENGL
                         val screenWidth = view?.getSurfaceWidth() ?: previewWidth
@@ -364,13 +358,13 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                    closeCameraInternal()
                     mRenderManager?.getCacheEffectList()?.apply {
                         mCacheEffectList.clear()
                         mCacheEffectList.addAll(this)
                     }
                     mRenderManager?.stopRenderScreen()
                     mRenderManager = null
+                    closeCameraInternal()
                 }
                 MSG_CAPTURE_IMAGE -> {
                     (msg.obj as Pair<*, *>).apply {
@@ -679,6 +673,13 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
         fun <T> openCamera(cameraView: T? = null, cameraRequest: CameraRequest? = null) {
             mCameraView = cameraView ?: mCameraView
             mCameraRequest = cameraRequest ?: getDefaultCameraRequest()
+            val oldHandler = mCameraHandler
+            val oldThread = mCameraThread
+            if (oldHandler != null && oldThread?.isAlive == true) {
+                Logger.i(TAG, "openCamera while previous session running, stop it first")
+                oldHandler.obtainMessage(MSG_STOP_PREVIEW)?.sendToTarget()
+                oldThread.quitSafely()
+            }
             HandlerThread("camera-${System.currentTimeMillis()}").apply {
                 start()
             }.let { thread ->

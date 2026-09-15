@@ -83,6 +83,9 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
     }
 
     protected fun registerMultiCamera() {
+        if (mCameraClient != null) {
+            return
+        }
         mCameraClient = MultiCameraClient(requireContext(), object : IDeviceConnectCallBack {
             override fun onAttachDev(device: UsbDevice?) {
                 device ?: return
@@ -129,6 +132,12 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
                 mCameraMap[device.deviceId]?.apply {
                     setUsbControlBlock(ctrlBlock)
                 }?.also { camera ->
+                    mCameraMap.values.forEach { other ->
+                        if (other !== camera && other.isCameraOpened()) {
+                            Logger.i(TAG, "take over by new camera, close old camera ${other.device.deviceName}")
+                            other.closeCamera()
+                        }
+                    }
                     try {
                         mCurrentCamera?.cancel(true)
                         mCurrentCamera = null
