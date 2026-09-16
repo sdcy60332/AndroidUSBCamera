@@ -19,14 +19,18 @@
  */
 #ifndef ANDROIDUSBCAMERA_PROXY_YUV_H
 #define ANDROIDUSBCAMERA_PROXY_YUV_H
-#ifdef __cplusplus
-extern "C" {
-#endif
 
+/* Includes first, outside the extern "C" block: <cstdlib> is a C++ header and
+   must not be wrapped in C linkage, or clang errors "templates must have C++
+   linkage". */
 #include <jni.h>
 #include <cstdlib>
 #include "../module/yuv/yuv.h"
 #include "../utils/logger.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void yuv420spToNv21(JNIEnv *env, jobject instance, jbyteArray data, jint width, jint height);
 void nv21ToYuv420sp(JNIEnv *env, jobject instance, jbyteArray data, jint width, jint height);

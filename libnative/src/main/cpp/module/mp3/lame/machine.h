@@ -31,6 +31,13 @@
 #include <stdio.h>
 #include <assert.h>
 
+/* Android NDK builds do not define STDC_HEADERS (nor run configure), so the
+   <stdlib.h>/<string.h> below would be skipped.  LAME sources rely on these
+   unconditionally (malloc/free/memcpy/...); include them here so every file
+   that pulls in machine.h compiles under clang -Wimplicit-function-declaration. */
+#include <stdlib.h>
+#include <string.h>
+
 #ifdef STDC_HEADERS
 # include <stdlib.h>
 # include <string.h>

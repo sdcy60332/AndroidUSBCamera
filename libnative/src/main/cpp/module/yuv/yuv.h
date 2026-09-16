@@ -7,10 +7,14 @@
 #ifndef ANDROIDUSBCAMERA_YUV_H
 #define ANDROIDUSBCAMERA_YUV_H
 
+/* <cstring> is a C++ header (namespace std + templates); it must stay OUTSIDE
+   the extern "C" linkage block below, or clang errors "templates must have C++
+   linkage". */
+#include <cstring>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <cstring>
 
 void *yuv420spToNv21Internal(char* srcData, char* destData, int width, int height);
 void *nv21ToYuv420spInternal(char* srcData, char* destData, int width, int height);

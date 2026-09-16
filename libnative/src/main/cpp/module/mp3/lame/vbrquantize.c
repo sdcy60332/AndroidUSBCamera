@@ -28,6 +28,7 @@
 
 
 #include "lame.h"
+#include <string.h>
 #include "machine.h"
 #include "encoder.h"
 #include "util.h"
