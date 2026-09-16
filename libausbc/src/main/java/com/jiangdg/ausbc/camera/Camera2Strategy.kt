@@ -600,10 +600,7 @@ class Camera2Strategy(ctx: Context) : ICameraStrategy(ctx) {
 //                val orientation = captureResult[CaptureResult.JPEG_ORIENTATION]
 //                val location = captureResult[CaptureResult.JPEG_GPS_LOCATION]
                 // 写入文件
-                File(path).apply {
-                    parentFile?.mkdirs()
-                    writeBytes(jpegBufferArray)
-                }
+                File(path).writeBytes(jpegBufferArray)
                 // 更新
                 val values = ContentValues()
                 values.put(MediaStore.Images.ImageColumns.TITLE, title)

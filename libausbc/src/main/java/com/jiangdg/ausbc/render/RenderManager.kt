@@ -460,14 +460,12 @@ class RenderManager(
         val path = savePath ?: "$mCameraDir/$displayName"
         val width = mWidth
         val height = mHeight
-        val file = File(path)
-        file.parentFile?.mkdirs()
         // 写入文件
         // glReadPixels读取的是大端数据，但是我们保存的是小端
         // 故需要将图片上下颠倒为正
         var fos: FileOutputStream? = null
         try {
-            fos = FileOutputStream(file)
+            fos = FileOutputStream(path)
             GLBitmapUtils.transFrameBufferToBitmap(mFBOBufferId, width, height).apply {
                 compress(Bitmap.CompressFormat.JPEG, 100, fos)
                 recycle()
@@ -486,6 +484,7 @@ class RenderManager(
         }
         //Judge whether it is saved successfully
         //Update gallery if successful
+        val file = File(path)
         if (file.length() == 0L) {
             Logger.e(TAG, "Failed to save file $path")
             file.delete()

@@ -96,10 +96,7 @@ class Camera1Strategy(ctx: Context) : ICameraStrategy(ctx), Camera.PreviewCallba
                 val orientation = 0
                 val location = Utils.getGpsLocation(getContext())
                 // 写入文件
-                File(path).apply {
-                    parentFile?.mkdirs()
-                    writeBytes(data)
-                }
+                File(path).writeBytes(data)
                 // 更新
                 val values = ContentValues()
                 values.put(MediaStore.Images.ImageColumns.TITLE, title)
