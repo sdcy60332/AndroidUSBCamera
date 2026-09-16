@@ -163,6 +163,7 @@ object MediaUtils {
         }
         val buffer = bos.toByteArray()
         val file = File(path)
+        file.parentFile?.mkdirs()
         val fos: FileOutputStream?
         try {
             fos = FileOutputStream(file)
