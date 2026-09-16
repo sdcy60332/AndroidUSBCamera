@@ -2,6 +2,7 @@ package com.jiangdg.demo
 
 import android.content.Context
 import android.hardware.usb.UsbDevice
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +18,7 @@ import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.utils.ToastUtils
 import com.jiangdg.demo.databinding.FragmentMultiCameraBinding
+import java.io.File
 
 /** Multi-road camera demo
  *
@@ -111,6 +113,7 @@ class DemoMultiCameraFragment : MultiCameraFragment(), ICameraStateCallBack {
             val camera = adapter.data[position] as MultiCameraClient.ICamera
             when (view.id) {
                 R.id.multi_camera_capture_image -> {
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Camera").mkdirs()
                     camera.captureImage(object : ICaptureCallBack {
                         override fun onBegin() {}
 

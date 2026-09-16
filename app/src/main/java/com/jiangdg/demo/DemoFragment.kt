@@ -26,6 +26,7 @@ import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.hardware.usb.UsbDevice
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -33,6 +34,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import java.io.File
 import android.widget.PopupWindow
 import android.widget.SeekBar
 import android.widget.TextView
@@ -418,6 +420,7 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
     }
 
     private fun captureImage() {
+        File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Camera").mkdirs()
         captureImage(object : ICaptureCallBack {
             override fun onBegin() {
                 mTakePictureTipView.show("", 100)
