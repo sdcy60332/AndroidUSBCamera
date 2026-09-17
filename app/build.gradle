@@ -65,5 +65,5 @@ dependencies {
     implementation "com.zlc.glide:webpdecoder:1.6.4.9.0"
     implementation 'com.tencent:mmkv:1.2.12'
 
-    implementation 'com.github.sdcy60332.AndroidUSBCamera:libausbc:3.3.5'
+    implementation project(':libausbc')
 }

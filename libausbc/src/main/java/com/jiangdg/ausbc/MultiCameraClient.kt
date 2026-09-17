@@ -565,6 +565,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
          */
         fun setRenderSize(width: Int, height: Int) {
             mSizeChangedFuture?.set(Pair(width, height))
+            mRenderManager?.setRenderSize(width, height)
         }
 
         /**

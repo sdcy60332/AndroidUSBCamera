@@ -74,6 +74,8 @@ class RenderManager(
     private var mTransformMatrix: FloatArray = FloatArray(16)
     private var mWidth: Int = 0
     private var mHeight: Int = 0
+    private var mScreenWidth: Int = 0
+    private var mScreenHeight: Int = 0
     private var mFBOBufferId: Int = 0
     private var mContext: Context = context
     private var mEffectList = arrayListOf<AbstractEffect>()
@@ -126,6 +128,12 @@ class RenderManager(
                     mScreenRender?.initGLES()
                     mCameraRender?.initGLES()
                     mCaptureRender?.initGLES()
+                    // Camera/capture FBO stays at camera preview size so photos
+                    // keep the selected resolution instead of the view size.
+                    applyCameraRenderSize()
+                    mScreenWidth = w
+                    mScreenHeight = h
+                    mScreenRender?.setSize(w, h)
                     mEOSTextureId = mCameraRender?.getCameraTextureId()?.apply {
                         mStFuture.set(SurfaceTexture(this))
                     }
@@ -134,12 +142,9 @@ class RenderManager(
             }
             MSG_GL_CHANGED_SIZE -> {
                 (msg.obj as Pair<*, *>).apply {
-                    mWidth = first as Int
-                    mHeight = second as Int
-                    mCameraRender?.setSize(mWidth, mHeight)
-                    mScreenRender?.setSize(mWidth, mHeight)
-                    mCaptureRender?.setSize(mWidth, mHeight)
-                    mCameraSurfaceTexture?.setDefaultBufferSize(mWidth, mHeight)
+                    mScreenWidth = first as Int
+                    mScreenHeight = second as Int
+                    mScreenRender?.setSize(mScreenWidth, mScreenHeight)
                 }
             }
             MSG_GL_SAVE_IMAGE -> {
@@ -271,12 +276,12 @@ class RenderManager(
             Logger.e(TAG, "wait for creating camera SurfaceTexture failed")
             null
         }?.apply {
-            setDefaultBufferSize(w, h)
+            setDefaultBufferSize(surfaceWidth, surfaceHeight)
             setOnFrameAvailableListener(this@RenderManager)
             mCameraSurfaceTexture = this
         }.also {
             listener?.onSurfaceTextureAvailable(it)
-            Logger.i(TAG, "create camera SurfaceTexture: $it")
+            Logger.i(TAG, "create camera SurfaceTexture: $it, camera=${surfaceWidth}x${surfaceHeight}, screen=${w}x${h}")
         }
         setRenderSize(w, h)
     }
@@ -329,11 +334,26 @@ class RenderManager(
     /**
      * Set render size
      *
+     * Only the on-screen viewport follows the preview view.
+     * Camera/capture FBO stays at the camera preview resolution.
+     *
      * @param w surface width
      * @param h surface height
      */
     fun setRenderSize(w: Int, h: Int) {
         mRenderHandler?.obtainMessage(MSG_GL_CHANGED_SIZE, Pair(w, h))?.sendToTarget()
+    }
+
+    private fun applyCameraRenderSize() {
+        if (surfaceWidth <= 0 || surfaceHeight <= 0) {
+            return
+        }
+        mWidth = surfaceWidth
+        mHeight = surfaceHeight
+        mCameraRender?.setSize(mWidth, mHeight)
+        mCaptureRender?.setSize(mWidth, mHeight)
+        mCameraSurfaceTexture?.setDefaultBufferSize(mWidth, mHeight)
+        Logger.i(TAG, "apply camera render size ${mWidth}x${mHeight}")
     }
 
     /**
@@ -458,8 +478,9 @@ class RenderManager(
         val title = savePath ?: "IMG_AUSBC_$date"
         val displayName = savePath ?: "$title.jpg"
         val path = savePath ?: "$mCameraDir/$displayName"
-        val width = mWidth
-        val height = mHeight
+        val width = if (mWidth > 0) mWidth else surfaceWidth
+        val height = if (mHeight > 0) mHeight else surfaceHeight
+        Logger.i(TAG, "saveImageInternal camera=${width}x${height}, screen=${mScreenWidth}x${mScreenHeight}")
         // 写入文件
         // glReadPixels读取的是大端数据，但是我们保存的是小端
         // 故需要将图片上下颠倒为正
