@@ -501,19 +501,14 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
         }
         val list = arrayListOf<String>()
         var selectedIndex: Int = -1
-        for (index in (0 until usbDeviceList.size)) {
+        for (index in usbDeviceList.indices) {
             val dev = usbDeviceList[index]
-            val devName = if (Build.VERSION.SDK_INT >=Build.VERSION_CODES.LOLLIPOP && !dev.productName.isNullOrEmpty()) {
-                "${dev.productName}(${curDevice?.deviceId})"
+            val devName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && !dev.productName.isNullOrEmpty()) {
+                "${dev.productName}(${dev.deviceId})"
             } else {
                 dev.deviceName
             }
-            val curDevName = if (Build.VERSION.SDK_INT >=Build.VERSION_CODES.LOLLIPOP && !curDevice?.productName.isNullOrEmpty()) {
-                "${curDevice!!.productName}(${curDevice.deviceId})"
-            } else {
-                curDevice?.deviceName
-            }
-            if (devName == curDevName) {
+            if (curDevice != null && dev.deviceId == curDevice.deviceId) {
                 selectedIndex = index
             }
             list.add(devName)
