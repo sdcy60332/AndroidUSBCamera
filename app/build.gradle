@@ -18,10 +18,22 @@ android {
             abiFilters 'armeabi-v7a','arm64-v8a'
         }
     }
+    signingConfigs {
+        keystore {
+            keyAlias "android"
+            keyPassword "123456789"
+            storeFile file("$rootDir/keystore.jks")
+            storePassword "123456789"
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.keystore
+        }
+        debug {
+            signingConfig signingConfigs.keystore
         }
     }
 
